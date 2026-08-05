@@ -5,8 +5,12 @@ Django settings for the BVC Hackathon Registration project.
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 # SECURITY WARNING: change this before deploying to production!
 SECRET_KEY = os.environ.get(
@@ -104,3 +108,15 @@ SIMPLE_JWT = {
 DATA_DIR = BASE_DIR / "data"
 TEAMS_FILE = DATA_DIR / "teams.xlsx"
 PROBLEMS_FILE = DATA_DIR / "problems.xlsx" 
+
+def _parse_admin_users(raw):
+    admins = {}
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if not pair or ":" not in pair:
+            continue
+        username, password = pair.split(":", 1)
+        admins[username.strip()] = password.strip()
+    return admins
+
+ADMIN_USERS = _parse_admin_users(os.environ.get("ADMIN_USERS", ""))

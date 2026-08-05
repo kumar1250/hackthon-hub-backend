@@ -15,6 +15,9 @@ from .serializers import (
     ChooseProblemSerializer,
     TeamIdeaSerializer,
 )
+from django.conf import settings
+from django.contrib.auth import get_user_model, authenticate
+
 from . import excel_utils
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 
@@ -159,18 +162,58 @@ def team_save_idea(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def admin_login(request):
-    username = request.data.get("username", "")
-    password = request.data.get("password", "")
+    username = request.data.get("username", "").strip()
+    password = request.data.get("password", "").strip()
+
+    # Hardcoded admin users
+    ADMIN_USERS = {
+        "kumar": "kumar@8121",
+        "harshal": "harshal123",
+        "Anilkumar": "Anilk123",
+        "mounika": "mounika@1227",
+        "sai prasad": "saiprasad@501",
+        "sai": "sai@1239",
+        "Bhavani": "bhavani@123",
+    }
+
+    User = get_user_model()
+
+    # First try normal Django authentication (superuser)
     user = authenticate(username=username, password=password)
-    if user is None or not user.is_staff:
-        return Response({"error": "Invalid credentials"}, status=401)
+
+    # If not a Django user, check hardcoded admins
+    if user is None:
+        if username not in ADMIN_USERS or ADMIN_USERS[username] != password:
+            return Response({"error": "Invalid credentials"}, status=401)
+
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={
+                "is_staff": True,
+                "is_superuser": False,
+                "is_active": True,
+            },
+        )
+
+        if created:
+            # Set any password so the model is valid
+            user.set_password(password)
+            user.save()
+        else:
+            user.is_staff = True
+            user.is_active = True
+            user.save(update_fields=["is_staff", "is_active"])
+
+    if not user.is_staff:
+        return Response({"error": "You are not an admin"}, status=403)
+
     refresh = RefreshToken.for_user(user)
+
     return Response({
         "access": str(refresh.access_token),
         "refresh": str(refresh),
         "username": user.username,
     })
-
 
 # ---------- Admin (JWT required) ----------
 
