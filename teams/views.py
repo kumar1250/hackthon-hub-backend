@@ -244,9 +244,8 @@ def dashboard(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def download_teams(request):
-    excel_utils._ensure_file()
     return FileResponse(
-        open(excel_utils.TEAMS_FILE, "rb"),
+        excel_utils.export_xlsx_bytes(),
         as_attachment=True,
         filename="teams.xlsx",
     )
@@ -321,9 +320,8 @@ def admin_problem_detail(request, problem_id):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def download_problems(request):
-    ps._ensure_file()
     return FileResponse(
-        open(ps.PROBLEMS_FILE, "rb"),
+        ps.export_xlsx_bytes(),
         as_attachment=True,
         filename="problem_statements.xlsx",
     )

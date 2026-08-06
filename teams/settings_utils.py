@@ -1,38 +1,39 @@
 """
 Tiny persisted app settings — currently just whether the problem
-statements are visible to participants (public site + team dashboard).
+statements are visible to participants (public site + team dashboard),
+plus the editable public-site content.
 
-Stored as a small JSON file next to the Excel "databases" so it
-survives restarts without needing a Django model/migration.
+Stored as key/value rows in the "Settings" tab of the same Google
+Sheet the rest of the app uses, so it survives Render restarts without
+needing a Django model/migration or local disk.
+
+The very first time this runs against a brand-new Google Sheet, the
+"Settings" tab will be empty, so _DEFAULTS below (seeded from your old
+data/app_settings.json) is used until the admin edits something from
+the dashboard, at which point real rows get written and take over.
 """
 
 import json
-import os
 import threading
 
-from django.conf import settings
+from . import gsheet_utils
 
-SETTINGS_FILE = os.path.join(str(settings.DATA_DIR), "app_settings.json")
+SHEET_NAME = "Settings"
+HEADERS = ["Key", "Value"]
 
 _lock = threading.Lock()
 
 _DEFAULTS = {
-    # Off by default — admin has to explicitly publish the problem
-    # statements before participants can see them.
-    "problems_visible": False,
+    "problems_visible": True,
 
-    # ---- Everything shown on the public site is editable by the admin.
-    # This is the single source of truth for the Home page: event info,
-    # the terminal card, rules/judging/deliverables/presentation-format
-    # sections, tracks, "how to register" steps, and coordinators.
     "site_content": {
         "event": {
             "name": "CODE ODALREVU",
-            "tagline": "24-Hour Internal Hackathon",
+            "tagline": "6-Hour Internal Hackathon",
             "subtitle": "build something real, in one sitting, with your crew. Team registration is open.",
             "college": "Bonam Venkata Chalamayya Engineering College",
             "place": "Odalrevu",
-            "dateLabel": "Hackathon Day 2026 • 22nd August 2026",
+            "dateLabel": "Hackathon Day 2026 • 10 August 2026",
             "venueLabel": "Bonam Venkata Chalamayya Engineering College Beach Road, Odalrevu — Andhra Pradesh, India",
             "status": "registrations_open",
             "minTeamSize": 1,
@@ -82,19 +83,32 @@ _DEFAULTS = {
             {"title": "Fill the form", "desc": "Team, track and contact details — takes about two minutes."},
             {"title": "Get your ticket", "desc": "Instant confirmation with a downloadable PDF ticket."},
         ],
-        "coordinators": [],
+        "coordinators": [
+            {
+                "name": "y.kumar",
+                "role": "coordinator",
+                "phone": "8121863879",
+                "email": "kumaryedida339@gamil.com",
+            }
+        ],
     },
 }
 
 
+def _ws():
+    return gsheet_utils.get_or_create_worksheet(SHEET_NAME, HEADERS)
+
+
 def _read():
-    if not os.path.exists(SETTINGS_FILE):
-        return json.loads(json.dumps(_DEFAULTS))  # deep copy
-    try:
-        with open(SETTINGS_FILE, "r") as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return json.loads(json.dumps(_DEFAULTS))
+    ws = _ws()
+    values = ws.get_all_values()[1:]
+    data = {}
+    for row in values:
+        if len(row) >= 2 and row[0]:
+            try:
+                data[row[0]] = json.loads(row[1])
+            except (json.JSONDecodeError, TypeError):
+                data[row[0]] = row[1]
 
     merged = json.loads(json.dumps(_DEFAULTS))  # deep copy of defaults
     for key, value in data.items():
@@ -105,12 +119,15 @@ def _read():
     return merged
 
 
-def _write(data):
-    os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
-    tmp_path = SETTINGS_FILE + ".tmp"
-    with open(tmp_path, "w") as f:
-        json.dump(data, f)
-    os.replace(tmp_path, SETTINGS_FILE)
+def _write_key(key, value):
+    """Upserts a single key/value row in the Settings sheet."""
+    ws = _ws()
+    values = ws.get_all_values()
+    for i, row in enumerate(values[1:], start=2):
+        if row and row[0] == key:
+            ws.update_cell(i, 2, json.dumps(value))
+            return
+    ws.append_row([key, json.dumps(value)], value_input_option="RAW")
 
 
 def get_problems_visible():
@@ -120,10 +137,9 @@ def get_problems_visible():
 
 def set_problems_visible(value):
     with _lock:
-        data = _read()
-        data["problems_visible"] = bool(value)
-        _write(data)
-        return data["problems_visible"]
+        v = bool(value)
+        _write_key("problems_visible", v)
+        return v
 
 
 # ---- Site content (everything the admin can edit on the public site) ----
@@ -138,10 +154,8 @@ def set_site_content(new_content):
     dict shaped like _DEFAULTS['site_content']; any missing top-level keys
     fall back to current values so a partial payload doesn't wipe things."""
     with _lock:
-        data = _read()
-        current = data["site_content"]
+        current = _read()["site_content"]
         if isinstance(new_content, dict):
             current.update(new_content)
-        data["site_content"] = current
-        _write(data)
-        return data["site_content"]
+        _write_key("site_content", current)
+        return current

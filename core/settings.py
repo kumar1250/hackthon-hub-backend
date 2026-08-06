@@ -104,10 +104,13 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
-# ---- Excel "database" location ----
+# ---- Data storage ----
+# Team registrations, problem statements, and app settings are now stored
+# in a Google Sheet (see teams/gsheet_utils.py) instead of local .xlsx
+# files, so data survives Render restarts/redeploys on the free tier.
+# Configure via the GOOGLE_SHEET_ID and GOOGLE_SERVICE_ACCOUNT_JSON env
+# vars — see GOOGLE_SHEETS_SETUP.md.
 DATA_DIR = BASE_DIR / "data"
-TEAMS_FILE = DATA_DIR / "teams.xlsx"
-PROBLEMS_FILE = DATA_DIR / "problems.xlsx" 
 
 def _parse_admin_users(raw):
     admins = {}
