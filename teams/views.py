@@ -168,12 +168,12 @@ def admin_login(request):
     # Hardcoded admin users
     ADMIN_USERS = {
         "kumar": "kumar@8121",
-        "harshal": "harshal123",
-        "Anilkumar": "Anilk123",
+        "harshal": "harshal1223",
+        "Anilkumar": "Anilkumar@123",
         "mounika": "mounika@1227",
-        "sai prasad": "saiprasad@501",
+        "saiprasad": "saiprasad@501",
         "sai": "sai@1239",
-        "Bhavani": "bhavani@123",
+        "Bhavani": "Bhavani@123",
     }
 
     User = get_user_model()
