@@ -102,13 +102,19 @@ def team_login(request):
     })
 
 
-@api_view(["GET"])
+@api_view(["GET", "PATCH"])
 @authentication_classes([])
 @permission_classes([AllowAny])
 def team_me(request):
     team_id = _team_id_from_request(request)
     if team_id is None:
         return Response({"error": "Not logged in, or session expired. Please log in again."}, status=401)
+
+    if request.method == "PATCH":
+        team = excel_utils.update_team(team_id, request.data)
+        if team is None:
+            return Response({"error": "Team not found."}, status=404)
+        return Response(team)
 
     team = excel_utils.get_team_by_id(team_id)
     if team is None:
@@ -226,9 +232,15 @@ def list_teams(request):
     return Response({"count": len(teams), "teams": teams})
 
 
-@api_view(["DELETE"])
+@api_view(["DELETE", "PATCH"])
 @permission_classes([IsAuthenticated])
 def delete_team(request, team_id):
+    if request.method == "PATCH":
+        team = excel_utils.update_team(team_id, request.data)
+        if not team:
+            return Response({"error": "Team not found"}, status=404)
+        return Response(team)
+
     deleted = excel_utils.delete_team(team_id)
     if not deleted:
         return Response({"error": "Team not found"}, status=404)

@@ -162,6 +162,48 @@ def set_team_idea(team_id, idea):
         return _row_to_team(row)
 
 
+def update_team(team_id, fields):
+    """Update editable fields on a team. `fields` may contain any of:
+    team_name, track, college, leader_name, leader_roll_no,
+    leader_email, leader_phone, idea (plain text values), and members
+    (a list of {name, roll_no, email, phone} dicts that REPLACES the
+    whole members list and updates the member-count column to match)."""
+    with _lock:
+        ws = _ensure_file()
+        row_num, row = _find_sheet_row(ws, team_id)
+        if row_num is None:
+            return None
+
+        col_by_field = {
+            "team_name": "Team Name",
+            "track": "Track",
+            "college": "College / Organization",
+            "leader_name": "Leader Name",
+            "leader_roll_no": "Leader Roll No",
+            "leader_email": "Leader Email",
+            "leader_phone": "Leader Phone",
+            "idea": "Idea / Abstract",
+        }
+
+        for field, header in col_by_field.items():
+            if field in fields and fields[field] is not None:
+                col = HEADERS.index(header) + 1
+                value = str(fields[field]).strip()
+                ws.update_cell(row_num, col, value)
+                row[col - 1] = value
+
+        if "members" in fields and fields["members"] is not None:
+            members = fields["members"]
+            count_col = HEADERS.index("Members Count") + 1
+            json_col = HEADERS.index("Members JSON") + 1
+            ws.update_cell(row_num, count_col, len(members))
+            ws.update_cell(row_num, json_col, json.dumps(members))
+            row[count_col - 1] = len(members)
+            row[json_col - 1] = json.dumps(members)
+
+        return _row_to_team(row)
+
+
 def _next_team_id():
     max_id = 0
     for row in _all_rows():
