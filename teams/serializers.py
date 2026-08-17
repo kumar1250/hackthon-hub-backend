@@ -4,6 +4,9 @@ MIN_TOTAL_TEAM_SIZE = 1
 MAX_TOTAL_TEAM_SIZE = 5
 DIFFICULTY_CHOICES = ["Easy", "Medium", "Hard"]
 
+from . import excel_utils
+
+
 class MemberSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=150)
     roll_no = serializers.CharField(max_length=50, required=False, allow_blank=True)
@@ -17,13 +20,21 @@ class RegistrationSerializer(serializers.Serializer):
     college = serializers.CharField(max_length=200)
 
     leader_name = serializers.CharField(max_length=150)
-    leader_roll_no = serializers.CharField(max_length=50, unique=True)
+    leader_roll_no = serializers.CharField(max_length=50)
     leader_email = serializers.EmailField()
     leader_phone = serializers.CharField(max_length=20)
 
     idea = serializers.CharField(max_length=2000, required=False, allow_blank=True)
 
     members = MemberSerializer(many=True, required=False)
+    
+    
+    def validate_leader_roll_no(self, value):
+        if excel_utils.find_team_by_roll_no(value) is not None:
+            raise serializers.ValidationError(
+                "A team is already registered with this leader roll number."
+            )
+        return value
 
     def validate_members(self, members):
         total_size = 1 + len(members)
