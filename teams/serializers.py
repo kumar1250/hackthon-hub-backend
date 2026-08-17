@@ -12,7 +12,7 @@ class MemberSerializer(serializers.Serializer):
 
 
 class RegistrationSerializer(serializers.Serializer):
-    team_name = serializers.CharField(max_length=150, unique=True)
+    team_name = serializers.CharField(max_length=150)
     track = serializers.CharField(max_length=100)
     college = serializers.CharField(max_length=200)
 
