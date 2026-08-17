@@ -12,12 +12,12 @@ class MemberSerializer(serializers.Serializer):
 
 
 class RegistrationSerializer(serializers.Serializer):
-    team_name = serializers.CharField(max_length=150)
+    team_name = serializers.CharField(max_length=150, unique=True)
     track = serializers.CharField(max_length=100)
     college = serializers.CharField(max_length=200)
 
     leader_name = serializers.CharField(max_length=150)
-    leader_roll_no = serializers.CharField(max_length=50)
+    leader_roll_no = serializers.CharField(max_length=50, unique=True)
     leader_email = serializers.EmailField()
     leader_phone = serializers.CharField(max_length=20)
 
